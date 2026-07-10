@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>英语单词听写工具（拍照识别版）</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", system-ui, sans-serif;
+        }
+        body {
+            background-color: #f5f7fa;
+            padding: 24px 16px;
+            max-width: 1080px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: #2563eb;
+            margin-bottom: 28px;
+            font-weight: 600;
+        }
+        .card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 22px;
+            box-shadow: 0 4px 16px rgba(37, 99, 235, 0.08);
+            margin-bottom: 20px;
+        }
+        .card-title {
+            font-size: 18px;
+            color: #1e293b;
+            margin-bottom: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .tip-text {
+            font-size: 14px;
+            color: #64748b;
+            margin: 6px 0 12px;
+            line-height: 1.6;
+        }
+        textarea {
+            width: 100%;
+            height: 170px;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            padding: 14px;
+            font-size: 16px;
+            resize: none;
+            transition: border 0.2s;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #2563eb;
+        }
+        .btn-wrap {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 16px 0;
+        }
+        button {
+            padding: 11px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            opacity: 0.92;
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        .btn-set {
+            background: #6366f1;
+            color: white;
+        }
+        .btn-start {
+            background: #2563eb;
+            color: white;
+        }
+        .btn-stop {
+            background: #ef4444;
+            color: white;
+        }
+        .btn-normal {
+            background: #e2e8f0;
+            color: #1e293b;
+        }
+        .btn-file {
+            background: #10b981;
+            color: white;
+        }
+        .btn-camera {
+            background: #f97316;
+            color: white;
+        }
+        .setting-panel {
+            display: none;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #eee;
+        }
+        .radio-group {
+            margin: 14px 0;
+        }
+        .radio-line {
+            display: flex;
+            gap: 30px;
+            margin: 10px 0;
+            font-size: 16px;
+        }
+        .radio-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .show-box {
+            font-size: 26px;
+            text-align: center;
+            padding: 40px 10px;
+            min-height: 140px;
+            color: #0f172a;
+            font-weight: 500;
+        }
+        .index-info {
+            color: #64748b;
+            font-size: 15px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        #fileInput, #photoInput {
+            display: none;
+        }
+        /* 相机弹窗 */
+        .camera-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .camera-box {
+            background: #fff;
+            border-radius: 16px;
+            padding: 20px;
+            max-width: 600px;
+            width: 100%;
+        }
+        video {
+            width: 100%;
+            border-radius: 10px;
+            background: #000;
+        }
+        #ocrStatus {
+            color: #d97706;
+            margin:10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>英语单词听写工具（拍照识别版）</h1>
+
+    <div class="card">
+        <div class="card-title">单词录入 / TXT导入 / 拍照识别</div>
+        <p class="tip-text">格式：英文,中文 一行一个，示例：apple,苹果<br>拍照请保证文字清晰，英文中文用逗号分隔分行</p>
+        <textarea id="wordInput" placeholder="手动输入、导入TXT或拍照识别自动填充"></textarea>
+        <div class="btn-wrap">
+            <button class="btn-file" onclick="document.getElementById('fileInput').click()">导入TXT文件</button>
+            <input type="file" id="fileInput" accept=".txt" onchange="loadTxtFile(event)">
+
+            <button class="btn-camera" onclick="openCamera()">拍照识别单词</button>
+            <input type="file" id="photoInput" accept="image/*" capture="environment" onchange="uploadPhoto(event)">
+
+            <button class="btn-normal" onclick="clearTextarea()">清空输入框</button>
+        </div>
+        <div id="ocrStatus"></div>
+    </div>
+
+    <!-- 相机弹窗 -->
+    <div class="camera-modal" id="cameraModal">
+        <div class="camera-box">
+            <video id="video" autoplay playsinline></video>
+            <div class="btn-wrap" style="margin-top:15px;">
+                <button class="btn-camera" onclick="takePhoto()">拍摄识别</button>
+                <button class="btn-normal" onclick="closeCamera()">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="btn-wrap">
+            <button class="btn-set" onclick="toggleSetting()">打开朗读设置</button>
+        </div>
+        <div class="setting-panel" id="settingBox">
+            <div class="card-title">朗读参数设置</div>
+
+            <div class="radio-group">
+                <p>朗读内容：</p>
+                <div class="radio-line">
+                    <div class="radio-item">
+                        <input type="radio" name="voiceType" value="en" id="vEn" checked>
+                        <label for="vEn">朗读英文</label>
+                    </div>
+                    <div class="radio-item">
+                        <input type="radio" name="voiceType" value="cn" id="vCn">
+                        <label for="vCn">朗读中文</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="radio-group">
+                <p>播放模式：</p>
+                <div class="radio-line">
+                    <div class="radio-item">
+                        <input type="radio" name="playMode" value="manual" id="modeManual" checked>
+                        <label for="modeManual">手动模式</label>
+                    </div>
+                    <div class="radio-item">
+                        <input type="radio" name="playMode" value="auto" id="modeAuto">
+                        <label for="modeAuto">自动连续听写</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="radio-group">
+                <p>单词切换间隔（自动模式生效）：</p>
+                <div class="radio-line">
+                    <div class="radio-item">
+                        <input type="radio" name="gapTime" value="5000" id="gap5" checked>
+                        <label for="gap5">5秒</label>
+                    </div>
+                    <div class="radio-item">
+                        <input type="radio" name="gapTime" value="8000" id="gap8">
+                        <label for="gap8">8秒</label>
+                    </div>
+                    <div class="radio-item">
+                        <input type="radio" name="gapTime" value="10000" id="gap10">
+                        <label for="gap10">10秒</label>
+                    </div>
+                </div>
+            </div>
+
+            <p class="tip-text">规则：每个单词朗读2遍，两遍内部间隔3秒；全部单词读完等待10秒后语音播报：所有单词已听写完成，请检查。</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="btn-wrap">
+            <button class="btn-start" onclick="startStudy()">开始学习</button>
+            <button class="btn-stop" onclick="stopAutoPlay()">停止朗读</button>
+        </div>
+        <div class="btn-wrap">
+            <button class="btn-normal" onclick="prevWord()">上一个单词</button>
+            <button class="btn-normal" onclick="nextWord()">下一个单词</button>
+            <button class="btn-normal" onclick="repeatVoice()">重复朗读当前词</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="index-info" id="indexTip">暂无单词</div>
+        <div class="show-box" id="showBox">请录入单词、导入文件或拍照识别后开始学习</div>
+    </div>
+
+<script>
+let wordList = [];
+let currentIndex = 0;
+let autoTimer = null;
+let finishTimer = null;
+let isAutoRunning = false;
+const INNER_GAP = 3000; // 单词两遍内部间隔3秒
+const FINISH_WAIT = 10000; // 全部读完等待10秒播报结束提示
+
+// 相机变量
+let mediaStream = null;
+const video = document.getElementById('video');
+const canvas = document.createElement('canvas');
+const ctx = canvas.getContext('2d');
+const ocrStatus = document.getElementById('ocrStatus');
+
+// 切换设置面板
+function toggleSetting() {
+    const box = document.getElementById("settingBox");
+    box.style.display = box.style.display === "none" || box.style.display === "" ? "block" : "none";
+}
+
+// 获取全部设置
+function getAllSettings() {
+    const voiceType = document.querySelector('input[name="voiceType"]:checked').value;
+    const playMode = document.querySelector('input[name="playMode"]:checked').value;
+    const gap = Number(document.querySelector('input[name="gapTime"]:checked').value);
+    return { voiceType, playMode, gap };
+}
+
+function clearTextarea() {
+    document.getElementById("wordInput").value = "";
+    ocrStatus.innerText = "";
+}
+
+// 导入TXT
+function loadTxtFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function (ev) {
+        document.getElementById("wordInput").value = ev.target.result;
+        ocrStatus.innerText = "TXT文件导入成功";
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+}
+
+// 打开摄像头弹窗
+async function openCamera() {
+    const modal = document.getElementById('cameraModal');
+    modal.style.display = 'flex';
+    try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        video.srcObject = mediaStream;
+    } catch (err) {
+        ocrStatus.innerText = "无法调用摄像头，可点击按钮上传图片识别";
+        document.getElementById('photoInput').click();
+        closeCamera();
+    }
+}
+
+// 关闭摄像头
+function closeCamera() {
+    if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+    mediaStream = null;
+    document.getElementById('cameraModal').style.display = 'none';
+}
+
+// 拍摄照片
+function takePhoto() {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0);
+    const imgData = canvas.toDataURL('image/png');
+    closeCamera();
+    recognizeImage(imgData);
+}
+
+// 上传相册图片识别
+function uploadPhoto(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => recognizeImage(ev.target.result);
+    reader.readAsDataURL(file);
+    e.target.value = "";
+}
+
+// OCR识别图片文字
+async function recognizeImage(imgSrc) {
+    ocrStatus.innerText = "正在识别图片文字，请稍等...";
+    try {
+        const result = await Tesseract.recognize(imgSrc, 'chi_sim+eng', {
+            logger: m => {
+                if (m.status === 'recognizing text') {
+                    ocrStatus.innerText = `识别进度：${(m.progress * 100).toFixed(0)}%`;
+                }
+            }
+        });
+        const text = result.data.text.trim();
+        if (!text) {
+            ocrStatus.innerText = "未识别到文字，请重新拍摄";
+            return;
+        }
+        // 追加到文本框
+        const input = document.getElementById('wordInput');
+        input.value = input.value ? input.value + "\n" + text : text;
+        ocrStatus.innerText = "识别完成，已自动填入单词框！";
+    } catch (err) {
+        ocrStatus.innerText = "识别失败，请换清晰图片重试";
+        console.error(err);
+    }
+}
+
+// 解析单词
+function parseWords() {
+    const input = document.getElementById("wordInput").value.trim();
+    if (!input) {
+        alert("请先录入单词、导入txt或拍照识别！");
+        return false;
+    }
+    const lines = input.split("\n");
+    wordList = [];
+    for (let line of lines) {
+        const parts = line.split(",");
+        if (parts.length >= 2) {
+            const en = parts[0].trim();
+            const cn = parts[1].trim();
+            if (en && cn) wordList.push({ en, cn });
+        }
+    }
+    if (wordList.length === 0) {
+        alert("单词格式错误，请使用 英文,中文 分行格式");
+        return false;
+    }
+    currentIndex = 0;
+    return true;
+}
+
+function renderWord() {
+    const item = wordList[currentIndex];
+    document.getElementById("indexTip").innerText = `第 ${currentIndex + 1} / ${wordList.length} 个单词`;
+    document.getElementById("showBox").innerText = `${item.en} —— ${item.cn}`;
+}
+
+// 朗读单个单词2遍，间隔3秒
+function playTwice(voiceType, gapTime) {
+    if (wordList.length === 0) return;
+    const item = wordList[currentIndex];
+    window.speechSynthesis.cancel();
+    let count = 0;
+    const { playMode } = getAllSettings();
+
+    function speak() {
+        const voice = new SpeechSynthesisUtterance(voiceType === "en" ? item.en : item.cn);
+        voice.lang = voiceType === "en" ? "en-US" : "zh-CN";
+        voice.rate = 0.95;
+        window.speechSynthesis.speak(voice);
+        voice.onend = () => {
+            count++;
+            if (count < 2) {
+                setTimeout(speak, INNER_GAP);
+            } else {
+                if (isAutoRunning && playMode === "auto") {
+                    autoTimer = setTimeout(nextAutoWord, gapTime);
+                }
+            }
+        };
+    }
+    speak();
+}
+
+function startStudy() {
+    stopAutoPlay();
+    if (!parseWords()) return;
+    const set = getAllSettings();
+    renderWord();
+    if (set.playMode === "auto") {
+        isAutoRunning = true;
+    }
+    playTwice(set.voiceType, set.gap);
+}
+
+function nextAutoWord() {
+    currentIndex++;
+    if (currentIndex >= wordList.length) {
+        finishTimer = setTimeout(() => {
+            const tip = new SpeechSynthesisUtterance("所有单词已听写完成，请检查。");
+            tip.lang = "zh-CN";
+            window.speechSynthesis.speak(tip);
+            tip.onend = () => {
+                stopAutoPlay();
+                alert("全部单词听写完成！");
+            };
+        }, FINISH_WAIT);
+        return;
+    }
+    const set = getAllSettings();
+    renderWord();
+    playTwice(set.voiceType, set.gap);
+}
+
+function stopAutoPlay() {
+    isAutoRunning = false;
+    clearTimeout(autoTimer);
+    clearTimeout(finishTimer);
+    window.speechSynthesis.cancel();
+}
+
+function nextWord() {
+    stopAutoPlay();
+    if (wordList.length === 0) return;
+    currentIndex = (currentIndex + 1) % wordList.length;
+    renderWord();
+    const set = getAllSettings();
+    playTwice(set.voiceType, set.gap);
+}
+
+function prevWord() {
+    stopAutoPlay();
+    if (wordList.length === 0) return;
+    currentIndex = (currentIndex - 1 + wordList.length) % wordList.length;
+    renderWord();
+    const set = getAllSettings();
+    playTwice(set.voiceType, set.gap);
+}
+
+function repeatVoice() {
+    stopAutoPlay();
+    const set = getAllSettings();
+    playTwice(set.voiceType, set.gap);
+}
+</script>
+</body>
+</html>
