@@ -1,0 +1,7 @@
+study,书房
+bedroom,卧室
+livingroom/sittingroom,客厅
+bathroom,浴室
+kitchen,厨房
+diningroom,饭厅
+toilet/washroom,洗手间

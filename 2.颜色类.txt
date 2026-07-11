@@ -1,0 +1,12 @@
+red,红色
+orange,橙色
+black,黑色
+white,白色
+yellow,黄色
+blue,蓝色
+gray/grey,灰色
+brown,棕色
+green,绿色
+pink,粉色
+gold,金色
+purple,紫色

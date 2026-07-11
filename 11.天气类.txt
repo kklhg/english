@@ -1,0 +1,11 @@
+sunny,晴朗的
+snowy,下雪的
+cloudy,多云的
+rainy,有雨的
+windy有风的
+wet,潮湿的
+dry,干燥的
+cold,冷的
+hot,热的
+warm,暖和的
+cool,凉爽的

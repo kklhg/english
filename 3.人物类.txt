@@ -1,0 +1,7 @@
+boy,男孩
+girl,女孩
+man,男人
+woman,女人
+people,人
+kid,小孩
+children,儿童(child的复数)

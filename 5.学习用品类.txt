@@ -1,0 +1,12 @@
+pen,钢笔
+pencil,铅笔
+pencilbox,铅笔盒
+schoolbag,书包
+eraser,橡皮
+crayon,蜡笔
+book,书
+notebook,笔记本
+ruler,尺子
+bag,书包
+stapler,订书机
+dictionary,字典
